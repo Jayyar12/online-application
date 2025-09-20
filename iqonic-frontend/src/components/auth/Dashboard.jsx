@@ -15,7 +15,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [userStats, setUserStats] = useState({
     totalQuizzes: 0,
     totalUsers: 0,
