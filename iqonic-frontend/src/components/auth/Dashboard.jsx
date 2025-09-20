@@ -85,7 +85,7 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
-    setShowLogoutModal(true);
+    confirmLogout(true);
   };
 
   const confirmLogout = () => {
@@ -201,44 +201,6 @@ export default function Dashboard() {
       {/* Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Logout Modal */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowLogoutModal(false)}
-          ></div>
-
-          <div className="relative bg-white rounded-2xl shadow-xl p-8 w-[400px] z-10 border border-gray-200">
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-red-100 rounded-full mr-3">
-                <LogOut className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Confirm Logout</h3>
-            </div>
-
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to log out of your account?
-            </p>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="px-4 py-2 rounded-lg bg-[#E46036] text-white hover:bg-[#cc4f2d] transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Main Content */}
