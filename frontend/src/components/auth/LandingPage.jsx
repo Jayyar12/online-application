@@ -26,9 +26,9 @@ const LandingPage = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <div className="w-12 h-12 bg-[#E46036] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-extrabold text-2xl">IQ</span>
+              <span className="text-white font-extrabold text-2xl">SM</span>
             </div>
-            <span className="text-2xl font-bold tracking-wide text-[#000000]">IQonic</span>
+            <span className="text-2xl font-bold tracking-wide text-[#000000]">Smart Quiz</span>
           </div>
 
           {/* Desktop Menu */}
@@ -36,6 +36,9 @@ const LandingPage = () => {
             <button className="hover:text-[#E46036] transition-colors" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Home</button>
             <button className="hover:text-[#E46036] transition-colors" onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>Features</button>
             <button className="hover:text-[#E46036] transition-colors" onClick={() => document.getElementById('News').scrollIntoView({ behavior: 'smooth' })}>News</button>
+            <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/register")}>Register</button>
+            <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/login")}>Login</button>
+            
           </div>
 
           {/* Mobile Menu Button */}
@@ -55,6 +58,8 @@ const LandingPage = () => {
                 <button className="hover:text-[#E46036] transition-colors" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Home</button>
                 <button className="hover:text-[#E46036] transition-colors" onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>Features</button>
                 <button className="hover:text-[#E46036] transition-colors" onClick={() => document.getElementById('News').scrollIntoView({ behavior: 'smooth' })}>News</button>
+                <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/register")}>Register</button>
+                <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/login")}>Login</button>
               </div>
 
               

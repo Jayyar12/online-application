@@ -70,6 +70,8 @@ const LoginPage = () => {
           {/* Desktop Menu */}
           <div className="hidden md:flex space-x-8 font-semibold text-[#000000]">
             <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/LandingPage")}>Home</button>
+            <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/register")}>Register</button>
+            <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/login")}>Login</button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -87,6 +89,8 @@ const LoginPage = () => {
             <div className="px-6 py-4 space-y-4">
               <div className="flex space-x-4">
                 <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/LandingPage")}>Home</button>
+                <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/register")}>Register</button>
+                <button className="hover:text-[#E46036] transition-colors" onClick={() => navigate("/login")}>Login</button>
               </div> 
             </div>
           </motion.div>
