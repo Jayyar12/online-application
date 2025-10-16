@@ -6,7 +6,10 @@ import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import Dashboard from "./components/auth/Dashboard";
 import LandingPage from "./components/auth/LandingPage";
-import QuizCreationPage from "./components/auth/QuizCreation";
+import QuizCreationPage from "./components/auth/CreateQuiz";
+import JoinQuiz from "./components/auth/JoinQuiz";
+import TakeQuiz from "./components/auth/TakeQuiz";
+import QuizResults from "./components/auth/QuizResults";
 
 function App() {
   return (
@@ -16,7 +19,6 @@ function App() {
           {/* Redirect root to landing page */}
           <Route path="/" element={<Navigate to="/landing" replace />} />
 
-          {/* Public (guest-only) routes */}
           <Route
             path="/landing"
             element={
@@ -25,6 +27,7 @@ function App() {
               </PublicRoute>
             }
           />
+
           <Route
             path="/login"
             element={
@@ -33,6 +36,7 @@ function App() {
               </PublicRoute>
             }
           />
+          
           <Route
             path="/register"
             element={
@@ -61,6 +65,36 @@ function App() {
             }
           />
 
+          {/* Join Quiz - Protected */}
+          <Route
+            path="/join-quiz"
+            element={
+              <ProtectedRoute>
+                <JoinQuiz />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Take Quiz - Protected */}
+          <Route
+            path="/take-quiz/:quizId"
+            element={
+              <ProtectedRoute>
+                <TakeQuiz />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Quiz Results - Protected */}
+          <Route
+            path="/quiz-results/:attemptId"
+            element={
+              <ProtectedRoute>
+                <QuizResults />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Catch-all for unknown routes */}
           <Route path="*" element={<Navigate to="/landing" replace />} />
         </Routes>
@@ -70,4 +104,3 @@ function App() {
 }
 
 export default App;
-

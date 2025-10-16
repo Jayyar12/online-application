@@ -192,7 +192,7 @@ const LandingPage = () => {
           {/* Logo and Name */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-[#E46036] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-extrabold text-lg">IQ</span>
+              <span className="text-white font-extrabold text-lg">SM</span>
             </div>
             <span className="font-bold text-xl text-[#000000]">SmartQuiz</span>
           </div>
