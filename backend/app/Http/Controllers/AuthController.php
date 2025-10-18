@@ -20,7 +20,7 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // ✅ Check if email exists and is unverified
+        //Check if email exists and is unverified
         $existingUser = User::where('email', $request->email)->first();
         
         if ($existingUser) {
@@ -47,7 +47,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'otp' => $otp,
             'otp_expires_at' => $otpExpiry,
-            'is_verified' => false, // ✅ Mark as not verified
+            'is_verified' => false, //Mark as not verified
         ]);
 
         try {
@@ -83,7 +83,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)
                     ->where('otp', $request->otp)
-                    ->where('is_verified', false) // ✅ Only verify unverified users
+                    ->where('is_verified', false) // Only verify unverified users
                     ->first();
 
         if (!$user) {
@@ -92,14 +92,14 @@ class AuthController extends Controller
             ], 400);
         }
 
-        // ✅ Check if OTP is expired
+        // Check if OTP is expired
         if ($user->otp_expires_at && Carbon::now()->greaterThan($user->otp_expires_at)) {
             return response()->json([
                 'message' => 'OTP has expired. Please request a new one.'
             ], 400);
         }
 
-        // ✅ Mark user as verified
+        // Mark user as verified
         $user->email_verified_at = now();
         $user->is_verified = true;
         $user->otp = null;
@@ -121,7 +121,7 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $request->email)
-                    ->where('is_verified', false) // ✅ Only resend for unverified users
+                    ->where('is_verified', false) //Only resend for unverified users
                     ->first();
 
         if (!$user) {
@@ -173,7 +173,7 @@ class AuthController extends Controller
             ]);
         }
 
-        // ✅ Check if user is verified
+        // Check if user is verified
         if (!$user->is_verified) {
             return response()->json([
                 'message' => 'Please verify your email before logging in.',
@@ -216,7 +216,7 @@ class AuthController extends Controller
     }
 
     /**
-     * ✅ Clean up unverified users (optional - run via cron job)
+     * Clean up unverified users (optional - run via cron job)
      * Delete users who haven't verified their email within 24 hours
      */
     public function cleanupUnverifiedUsers()

@@ -16,8 +16,8 @@ class QuizController extends Controller
 {
 
     /**
- * Get all participants for a quiz
- */
+    * Get all participants for a quiz
+    */
 public function getQuizParticipants(Request $request, $quizId)
 {
     try {
@@ -102,8 +102,8 @@ public function getQuizParticipants(Request $request, $quizId)
 }
 
 /**
- * Get detailed statistics for a quiz
- */
+* Get detailed statistics for a quiz
+*/
 public function getQuizStatistics(Request $request, $quizId)
 {
     $quiz = Quiz::with(['questions'])->findOrFail($quizId);

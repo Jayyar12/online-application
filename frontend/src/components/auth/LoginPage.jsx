@@ -62,9 +62,9 @@ const LoginPage = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <div className="w-12 h-12 bg-[#E46036] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-extrabold text-2xl">IQ</span>
+              <span className="text-white font-extrabold text-2xl">SM</span>
             </div>
-            <span className="text-2xl font-bold tracking-wide text-[#000000]">IQonic</span>
+            <span className="text-2xl font-bold tracking-wide text-[#000000]">Smart Quiz</span>
           </div>
 
           {/* Desktop Menu */}
@@ -106,10 +106,10 @@ const LoginPage = () => {
         {/* Branding */}
         <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 bg-[#E46036] rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-white font-extrabold text-2xl">IQ</span>
+            <span className="text-white font-extrabold text-2xl">SM</span>
           </div>
           <h2 className="mt-3 text-2xl font-bold tracking-wide text-[#000000]">
-            IQonic
+            Smart Quiz
           </h2>
         </div>
 

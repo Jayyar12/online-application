@@ -142,9 +142,9 @@ const RegisterPage = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <div className="w-12 h-12 bg-[#E46036] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-extrabold text-2xl">IQ</span>
+              <span className="text-white font-extrabold text-2xl">SM</span>
             </div>
-            <span className="text-2xl font-bold tracking-wide text-[#000000]">IQonic</span>
+            <span className="text-2xl font-bold tracking-wide text-[#000000]">Smart Quiz</span>
           </div>
 
           <div className="hidden md:flex space-x-8 font-semibold text-[#000000]">
@@ -185,7 +185,7 @@ const RegisterPage = () => {
         {!otpStep ? (
           <>
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-[#E46036] mb-2">Join IQonic</h2>
+              <h2 className="text-3xl font-bold text-[#E46036] mb-2">Join Smart Quiz</h2>
               <p className="text-gray-600">Create your account</p>
             </div>
 
