@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { quizService } from '../../services/quizService';
 import { useAuth } from '../../hooks/useAuth';
+import { Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
+import EditQuiz from './EditQuiz';
 import { 
   BookOpen, 
   Edit, 
@@ -16,8 +20,7 @@ import {
   Copy,
   Check
 } from "lucide-react";
-import Swal from 'sweetalert2';
-import EditQuiz from './EditQuiz';
+
 
 export default function MyQuizzes() {
   const { user } = useAuth();
@@ -28,6 +31,10 @@ export default function MyQuizzes() {
   const [actionLoading, setActionLoading] = useState(null);
   const [editingQuizId, setEditingQuizId] = useState(null);
   const [copiedCode, setCopiedCode] = useState(null);
+  const navigate = useNavigate();
+  
+
+  
 
   const fetchMyQuizzes = async () => {
     try {
@@ -343,6 +350,16 @@ export default function MyQuizzes() {
                       Publish
                     </button>
                   )}
+                  
+                  {/* NEW: View Participants Button */}
+                  <button
+                    onClick={() => navigate(`/quiz-participants/${quiz.id}`)}
+                    className="px-3 py-2 border border-blue-300 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors flex items-center"
+                    title="View participants"
+                  >
+                    <Users className="w-4 h-4 mr-1" />
+                    Participants
+                  </button>
                   
                   <button
                     onClick={() => setEditingQuizId(quiz.id)}

@@ -15,6 +15,10 @@ Route::get('/landingpage', [AuthController::class, 'landingPage']);
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
 
+    // Quiz participants and statistics
+    Route::get('/quizzes/{id}/participants', [QuizController::class, 'getQuizParticipants']);
+    Route::get('/quizzes/{id}/statistics', [QuizController::class, 'getQuizStatistics']);
+
     // Get all attempts of the authenticated user
     Route::get('/my-attempts', [QuizController::class, 'myAttempts']);
 

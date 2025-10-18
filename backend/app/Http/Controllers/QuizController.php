@@ -15,6 +15,184 @@ use App\Models\Answer;
 class QuizController extends Controller
 {
 
+    /**
+ * Get all participants for a quiz
+ */
+public function getQuizParticipants(Request $request, $quizId)
+{
+    try {
+        $quiz = Quiz::with(['questions'])->findOrFail($quizId);
+        
+        // Check if user owns this quiz
+        if ($quiz->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Unauthorized to view participants'
+            ], 403);
+        }
+        
+        // Calculate total points from questions
+        $totalPoints = $quiz->questions->sum('points');
+        
+        // Get all attempts for this quiz with user information
+        $attempts = QuizAttempt::where('quiz_id', $quizId)
+            ->with(['user', 'answers'])
+            ->get();
+        
+        // If no attempts, return empty array
+        if ($attempts->isEmpty()) {
+            return response()->json([
+                'data' => [
+                    'quiz' => [
+                        'id' => $quiz->id,
+                        'title' => $quiz->title,
+                        'description' => $quiz->description,
+                        'total_points' => $totalPoints,
+                        'question_count' => $quiz->questions->count(),
+                    ],
+                    'participants' => [],
+                ]
+            ]);
+        }
+        
+        // Map participants
+        $participants = $attempts->map(function ($attempt) use ($totalPoints) {
+            $percentage = $totalPoints > 0 
+                ? round(($attempt->score / $totalPoints) * 100, 2)
+                : 0;
+            
+            return [
+                'id' => $attempt->id,
+                'user_id' => $attempt->user_id,
+                'user_name' => $attempt->user->name ?? 'Unknown',
+                'user_email' => $attempt->user->email ?? 'N/A',
+                'score' => $attempt->score ?? 0,
+                'percentage' => $percentage,
+                'completed' => $attempt->completed,
+                'started_at' => $attempt->started_at,
+                'completed_at' => $attempt->completed_at,
+                'answers_count' => $attempt->answers->count(),
+            ];
+        })
+        ->sortByDesc('score')
+        ->values();
+        
+        return response()->json([
+            'data' => [
+                'quiz' => [
+                    'id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'description' => $quiz->description,
+                    'total_points' => $totalPoints,
+                    'question_count' => $quiz->questions->count(),
+                ],
+                'participants' => $participants,
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Error fetching participants: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'message' => 'Failed to fetch participants',
+            'error' => $e->getMessage(),
+            'trace' => config('app.debug') ? $e->getTraceAsString() : null
+        ], 500);
+    }
+}
+
+/**
+ * Get detailed statistics for a quiz
+ */
+public function getQuizStatistics(Request $request, $quizId)
+{
+    $quiz = Quiz::with(['questions'])->findOrFail($quizId);
+    
+    // Check if user owns this quiz
+    if ($quiz->user_id !== $request->user()->id) {
+        return response()->json([
+            'message' => 'Unauthorized to view statistics'
+        ], 403);
+    }
+    
+    $attempts = QuizAttempt::where('quiz_id', $quizId)
+        ->where('completed', true)
+        ->get();
+    
+    $totalAttempts = $attempts->count();
+    
+    if ($totalAttempts === 0) {
+        return response()->json([
+            'data' => [
+                'total_attempts' => 0,
+                'average_score' => 0,
+                'highest_score' => 0,
+                'lowest_score' => 0,
+                'pass_rate' => 0,
+                'score_distribution' => [],
+            ]
+        ]);
+    }
+    
+    $scores = $attempts->pluck('score');
+    $averageScore = $scores->average();
+    $highestScore = $scores->max();
+    $lowestScore = $scores->min();
+    
+    // Calculate pass rate (assuming 60% is passing)
+    $passingScore = $quiz->total_points * 0.6;
+    $passedCount = $attempts->where('score', '>=', $passingScore)->count();
+    $passRate = round(($passedCount / $totalAttempts) * 100, 2);
+    
+    // Score distribution
+    $distribution = [
+        '90-100%' => $attempts->filter(fn($a) => ($a->score / $quiz->total_points) >= 0.9)->count(),
+        '80-89%' => $attempts->filter(fn($a) => ($a->score / $quiz->total_points) >= 0.8 && ($a->score / $quiz->total_points) < 0.9)->count(),
+        '70-79%' => $attempts->filter(fn($a) => ($a->score / $quiz->total_points) >= 0.7 && ($a->score / $quiz->total_points) < 0.8)->count(),
+        '60-69%' => $attempts->filter(fn($a) => ($a->score / $quiz->total_points) >= 0.6 && ($a->score / $quiz->total_points) < 0.7)->count(),
+        'Below 60%' => $attempts->filter(fn($a) => ($a->score / $quiz->total_points) < 0.6)->count(),
+    ];
+    
+    // Question analysis
+    $questionStats = [];
+    foreach ($quiz->questions as $question) {
+        $answers = Answer::where('question_id', $question->id)
+            ->whereHas('attempt', function ($query) use ($quizId) {
+                $query->where('quiz_id', $quizId)->where('completed', true);
+            })
+            ->get();
+        
+        $totalAnswers = $answers->count();
+        $correctAnswers = $answers->where('is_correct', true)->count();
+        $correctRate = $totalAnswers > 0 ? round(($correctAnswers / $totalAnswers) * 100, 2) : 0;
+        
+        $questionStats[] = [
+            'question_id' => $question->id,
+            'question_text' => $question->question_text,
+            'type' => $question->type,
+            'points' => $question->points,
+            'total_attempts' => $totalAnswers,
+            'correct_count' => $correctAnswers,
+            'correct_rate' => $correctRate,
+            'difficulty' => $correctRate >= 80 ? 'Easy' : ($correctRate >= 50 ? 'Medium' : 'Hard'),
+        ];
+    }
+    
+    return response()->json([
+        'data' => [
+            'total_attempts' => $totalAttempts,
+            'completed_attempts' => $totalAttempts,
+            'in_progress' => QuizAttempt::where('quiz_id', $quizId)->where('completed', false)->count(),
+            'average_score' => round($averageScore, 2),
+            'highest_score' => $highestScore,
+            'lowest_score' => $lowestScore,
+            'pass_rate' => $passRate,
+            'score_distribution' => $distribution,
+            'question_stats' => $questionStats,
+        ]
+    ]);
+}
+
     public function saveProgress(Request $request, $attemptId)
 {
     $attempt = QuizAttempt::findOrFail($attemptId);

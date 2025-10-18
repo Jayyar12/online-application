@@ -10,6 +10,8 @@ const api = axios.create({
   },
 });
 
+api.defaults.withCredentials = true;
+
 
 // Request interceptor
 api.interceptors.request.use((config) => {
@@ -35,6 +37,13 @@ api.interceptors.response.use(
 );
 
 export const quizService = {
+
+   // Get quiz participants
+  getQuizParticipants: (quizId) => api.get(`/quizzes/${quizId}/participants`),
+  
+  // Get quiz statistics
+  getQuizStatistics: (quizId) => api.get(`/quizzes/${quizId}/statistics`),
+
   // Quiz CRUD
   getAllQuizzes: (params = {}) => api.get('/quizzes', { params }),
   getMyQuizzes: (params = {}) => api.get('/my-quizzes', { params }),
@@ -42,6 +51,8 @@ export const quizService = {
   deleteQuiz: (id) => api.delete(`/quizzes/${id}`),
   publishQuiz: (id) => api.post(`/quizzes/${id}/publish`),
   unpublishQuiz: (id) => api.post(`/quizzes/${id}/unpublish`),
+
+   
 
   // Question Management
   addQuestion: (quizId, data) => api.post(`/quizzes/${quizId}/questions`, data),

@@ -4,6 +4,7 @@ import { Loader2, Eye, EyeOff, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
+
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -54,8 +55,11 @@ const RegisterPage = () => {
       const res = await axios.post('http://localhost:8000/api/register', formData);
       
       // ✅ Get email from response
-      setEmailForOtp(res.data.email || formData.email);
+      const email = res.data.email || formData.email;
+      setEmailForOtp(email);
       setOtpStep(true);
+      localStorage.setItem('otpStep', 'true');
+      localStorage.setItem('emailForOtp', email);
       setSuccessMessage('OTP has been sent to your email. Please check your inbox.');
       
     } catch (error) {
@@ -71,6 +75,8 @@ const RegisterPage = () => {
     }
   };
 
+  
+
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setOtpLoading(true);
@@ -83,10 +89,12 @@ const RegisterPage = () => {
         otp: otp.trim(),
       });
       
-      setSuccessMessage('Email verified successfully! Redirecting to login...');
+      setSuccessMessage('Email verified successfully! Redirecting to dashboard...');
       
       setTimeout(() => {
-        navigate('/login');
+        localStorage.removeItem('otpStep');
+        localStorage.removeItem('emailForOtp');
+        navigate('/dashboard');
       }, 2000);
       
     } catch (error) {

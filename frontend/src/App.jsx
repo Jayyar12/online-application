@@ -10,6 +10,7 @@ import QuizCreationPage from "./components/auth/CreateQuiz";
 import JoinQuiz from "./components/auth/JoinQuiz";
 import TakeQuiz from "./components/auth/TakeQuiz";
 import QuizResults from "./components/auth/QuizResults";
+import QuizParticipants from "./components/auth/QuizParticipants";
 
 function App() {
   return (
@@ -91,6 +92,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <QuizResults />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/quiz-participants/:quizId"
+            element={
+              <ProtectedRoute>
+                <QuizParticipants />
               </ProtectedRoute>
             }
           />

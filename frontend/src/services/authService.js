@@ -10,6 +10,8 @@ const api = axios.create({
   },
 });
 
+api.defaults.withCredentials = true;
+
 // Add auth token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
@@ -35,6 +37,10 @@ api.interceptors.response.use(
 export const authService = {
   async register(userData) {
     const response = await api.post('/register', userData);
+    if (response.data.token) {
+    localStorage.setItem('auth_token', response.data.token);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+  }
     return response.data;
   },
 
@@ -74,3 +80,4 @@ export const authService = {
     return !!this.getToken();
   },
 };
+
