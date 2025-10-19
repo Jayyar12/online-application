@@ -15,6 +15,10 @@ use App\Models\Answer;
 class QuizController extends Controller
 {
 
+
+    
+    
+
     /**
     * Get all participants for a quiz
     */
@@ -469,19 +473,24 @@ public function submitQuiz(Request $request, $attemptId)
 
 /**
  * Get quiz results
+ * Accessible by: attempt owner OR quiz creator
  */
 public function getResults(Request $request, $attemptId)
 {
     $attempt = QuizAttempt::with([
         'quiz',
         'answers.question.choices',
-        'answers.choice'
+        'answers.choice',
+        'user' // Add user relationship for participant info
     ])->findOrFail($attemptId);
 
-    // Check if user owns this attempt
-    if ($attempt->user_id !== $request->user()->id) {
+    // Authorization: Allow if user owns the attempt OR owns the quiz
+    $isAttemptOwner = $attempt->user_id === $request->user()->id;
+    $isQuizCreator = $attempt->quiz->user_id === $request->user()->id;
+
+    if (!$isAttemptOwner && !$isQuizCreator) {
         return response()->json([
-            'message' => 'Unauthorized'
+            'message' => 'Unauthorized to view these results'
         ], 403);
     }
 
@@ -493,7 +502,8 @@ public function getResults(Request $request, $attemptId)
     }
 
     // Check if results should be shown
-    if (!$attempt->quiz->show_results_immediately) {
+    // Note: Quiz creators can always see results, students need show_results_immediately
+    if (!$isQuizCreator && !$attempt->quiz->show_results_immediately) {
         return response()->json([
             'message' => 'Results not available yet',
             'data' => [
@@ -504,33 +514,52 @@ public function getResults(Request $request, $attemptId)
         ]);
     }
 
+    $responseData = [
+        'attempt_id' => $attempt->id,
+        'quiz_id' => $attempt->quiz_id, // ADD THIS LINE
+        'quiz_title' => $attempt->quiz->title,
+        'score' => $attempt->score,
+        'total_points' => $attempt->quiz->total_points,
+        'percentage' => round(($attempt->score / $attempt->quiz->total_points) * 100, 2),
+        'completed_at' => $attempt->completed_at,
+        'allow_review' => $attempt->quiz->allow_review,
+        'show_details' => true,
+    ];
+
+    // Add participant info if viewing as quiz creator
+    if ($isQuizCreator && !$isAttemptOwner) {
+        $responseData['participant'] = [
+            'id' => $attempt->user->id,
+            'name' => $attempt->user->name,
+            'email' => $attempt->user->email,
+        ];
+    }
+
+    // Include answers if review is allowed OR if user is the quiz creator
+    if ($attempt->quiz->allow_review || $isQuizCreator) {
+        $responseData['answers'] = $attempt->answers->map(function ($answer) {
+            return [
+                'answer_id' => $answer->id, // ADD THIS LINE - CRITICAL!
+                'question_id' => $answer->question_id,
+                'question_text' => $answer->question->question_text,
+                'question_type' => $answer->question->type,
+                'user_answer' => $answer->choice_id ? $answer->choice->choice_text : $answer->answer_text,
+                'correct_answer' => $answer->question->type === 'multiple_choice' 
+                    ? $answer->question->choices->where('is_correct', true)->first()?->choice_text
+                    : $answer->question->correct_answer,
+                'is_correct' => $answer->is_correct,
+                'points_earned' => $answer->points_earned,
+                'points_possible' => $answer->question->points,
+                'feedback' => $answer->feedback, // ADD THIS LINE
+                'choices' => $answer->question->type === 'multiple_choice' 
+                    ? $answer->question->choices 
+                    : null,
+            ];
+        });
+    }
+
     return response()->json([
-        'data' => [
-            'attempt_id' => $attempt->id,
-            'quiz_title' => $attempt->quiz->title,
-            'score' => $attempt->score,
-            'total_points' => $attempt->quiz->total_points,
-            'percentage' => round(($attempt->score / $attempt->quiz->total_points) * 100, 2),
-            'completed_at' => $attempt->completed_at,
-            'allow_review' => $attempt->quiz->allow_review,
-            'answers' => $attempt->answers->map(function ($answer) {
-                return [
-                    'question_id' => $answer->question_id,
-                    'question_text' => $answer->question->question_text,
-                    'question_type' => $answer->question->type,
-                    'user_answer' => $answer->choice_id ? $answer->choice->choice_text : $answer->answer_text,
-                    'correct_answer' => $answer->question->type === 'multiple_choice' 
-                        ? $answer->question->choices->where('is_correct', true)->first()?->choice_text
-                        : $answer->question->correct_answer,
-                    'is_correct' => $answer->is_correct,
-                    'points_earned' => $answer->points_earned,
-                    'points_possible' => $answer->question->points,
-                    'choices' => $answer->question->type === 'multiple_choice' 
-                        ? $answer->question->choices 
-                        : null,
-                ];
-            }),
-        ]
+        'data' => $responseData
     ]);
 }
 

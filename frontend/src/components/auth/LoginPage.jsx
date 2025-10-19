@@ -177,6 +177,15 @@ const LoginPage = () => {
             )}
           </motion.div>
 
+          <div className="flex items-center justify-between mb-6">
+            <Link 
+              to="/forgot-password" 
+              className="text-sm text-[#E46036] hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
           {/* Submit */}
           <motion.button
             whileHover={{ scale: 1.05 }}

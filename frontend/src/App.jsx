@@ -11,6 +11,8 @@ import JoinQuiz from "./components/auth/JoinQuiz";
 import TakeQuiz from "./components/auth/TakeQuiz";
 import QuizResults from "./components/auth/QuizResults";
 import QuizParticipants from "./components/auth/QuizParticipants";
+import ForgotPassword from "./components/auth/ForgotPassword";
+import ResetPassword from "./components/auth/ResetPassword";
 
 function App() {
   return (
@@ -104,6 +106,9 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Catch-all for unknown routes */}
           <Route path="*" element={<Navigate to="/landing" replace />} />

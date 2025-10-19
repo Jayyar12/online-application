@@ -9,21 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
         Schema::table('answers', function (Blueprint $table) {
-            $table->foreignId('quiz_attempt_id')
-                ->after('id')
-                ->constrained('quiz_attempts')
-                ->onDelete('cascade');
+            $table->text('feedback')->nullable()->after('points_earned');
         });
     }
 
-    public function down()
+    /**
+     * Run the migrations.
+     */
+    public function down(): void
     {
         Schema::table('answers', function (Blueprint $table) {
-            $table->dropForeign(['quiz_attempt_id']);
-            $table->dropColumn('quiz_attempt_id');
+            $table->dropColumn('feedback');
         });
     }
 };

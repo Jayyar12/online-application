@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\EssayGradingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,6 +24,19 @@ Route::get('/landingpage', [AuthController::class, 'landingPage']);
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
+
+
+    // Get all ungraded essays for a quiz
+    Route::get('/quizzes/{quizId}/ungraded-essays', [EssayGradingController::class, 'getUngradedEssays']);
+    
+    // Get essay answers for a specific attempt
+    Route::get('/attempts/{attemptId}/essays', [EssayGradingController::class, 'getEssaysForAttempt']);
+    
+    // Grade a single essay answer
+    Route::post('/answers/{answerId}/grade', [EssayGradingController::class, 'gradeAnswer']);
+    
+    // Grade multiple essay answers at once
+    Route::post('/answers/grade-multiple', [EssayGradingController::class, 'gradeMultipleAnswers']);
 
     /*
     |------------------------------
@@ -87,3 +102,12 @@ Route::fallback(function () {
         'message' => 'Route not found or unauthorized'
     ], 404);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Forgot Password Route
+|--------------------------------------------------------------------------
+*/
+Route::post('/password/forgot', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/password/reset', [PasswordResetController::class, 'reset']);
+Route::post('/password/validate-token', [PasswordResetController::class, 'validateToken']);

@@ -12,7 +12,6 @@ const api = axios.create({
 
 api.defaults.withCredentials = true;
 
-
 // Request interceptor
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
@@ -37,8 +36,7 @@ api.interceptors.response.use(
 );
 
 export const quizService = {
-
-   // Get quiz participants
+  // Get quiz participants
   getQuizParticipants: (quizId) => api.get(`/quizzes/${quizId}/participants`),
   
   // Get quiz statistics
@@ -51,8 +49,6 @@ export const quizService = {
   deleteQuiz: (id) => api.delete(`/quizzes/${id}`),
   publishQuiz: (id) => api.post(`/quizzes/${id}/publish`),
   unpublishQuiz: (id) => api.post(`/quizzes/${id}/unpublish`),
-
-   
 
   // Question Management
   addQuestion: (quizId, data) => api.post(`/quizzes/${quizId}/questions`, data),
@@ -72,11 +68,16 @@ export const quizService = {
     return response.data;
   },
 
-
   updateQuiz: async (id, quizData) => {
     const response = await api.put(`/quizzes/${id}`, quizData);
     return response.data;
-    },
-  };
+  },
+
+  // Essay Grading
+  getUngradedEssays: (quizId) => api.get(`/quizzes/${quizId}/ungraded-essays`),
+  getEssaysForAttempt: (attemptId) => api.get(`/attempts/${attemptId}/essays`),
+  gradeAnswer: (answerId, data) => api.post(`/answers/${answerId}/grade`, data),
+  gradeMultipleAnswers: (grades) => api.post('/answers/grade-multiple', { grades }),
+};
 
 export default quizService;
