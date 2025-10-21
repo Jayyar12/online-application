@@ -6,16 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Quiz extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'title',
@@ -30,11 +26,6 @@ class Quiz extends Model
         'published_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'time_limit' => 'integer',
         'randomize_questions' => 'boolean',
@@ -45,86 +36,73 @@ class Quiz extends Model
         'published_at' => 'datetime',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(fn($quiz) => static::clearCache($quiz));
+        static::updated(fn($quiz) => static::clearCache($quiz));
+        static::deleted(fn($quiz) => static::clearCache($quiz));
+    }
+
+    protected static function clearCache($quiz)
+    {
+        $userId = $quiz->user_id;
+        Cache::forget("dashboard_stats_user_{$userId}");
+        Cache::forget("user_quizzes_{$userId}");
+        Cache::forget("recent_quizzes_{$userId}");
+    }
+
     public function getFormattedCreatedAtAttribute()
     {
         return $this->created_at->format('M j, Y');
     }
 
-    /**
-     * Get the formatted published at attribute
-     */
     public function getFormattedPublishedAtAttribute()
     {
         return $this->published_at?->format('M j, Y');
     }
 
-    /**
-     * Get the user that owns the quiz.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the questions for the quiz.
-     */
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class)->orderBy('order');
     }
 
-    /**
-     * Get the quiz attempts.
-     */
     public function attempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
     }
 
-    /**
-     * Scope a query to only include published quizzes.
-     */
     public function scopePublished($query)
     {
         return $query->where('is_published', true);
     }
 
-    /**
-     * Scope a query to only include unpublished quizzes.
-     */
     public function scopeUnpublished($query)
     {
         return $query->where('is_published', false);
     }
 
-    /**
-     * Scope a query to only include quizzes by a specific user.
-     */
     public function scopeByUser($query, $userId)
     {
         return $query->where('user_id', $userId);
     }
 
-    /**
-     * Get the total points for the quiz.
-     */
     public function getTotalPointsAttribute()
     {
         return $this->questions->sum('points');
     }
 
-    /**
-     * Get the total number of questions.
-     */
     public function getQuestionCountAttribute()
     {
         return $this->questions->count();
     }
 
-    /**
-     * Publish the quiz.
-     */
     public function publish()
     {
         $this->update([
@@ -133,9 +111,6 @@ class Quiz extends Model
         ]);
     }
 
-    /**
-     * Unpublish the quiz.
-     */
     public function unpublish()
     {
         $this->update([
@@ -143,9 +118,7 @@ class Quiz extends Model
             'published_at' => null,
         ]);
     }
-        /**
-     * Generate a unique quiz code.
-     */
+
     public static function generateUniqueCode()
     {
         do {
