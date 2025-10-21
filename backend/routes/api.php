@@ -80,6 +80,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/quizzes/join', [QuizController::class, 'joinByCode']);
     Route::post('/quizzes/{id}/start', [QuizController::class, 'startQuiz']);
 
+    Route::get('/attempts/{attemptId}/progress', [QuizController::class, 'getAttemptProgress']);
+
     Route::post('/attempts/{attemptId}/save-progress', [QuizController::class, 'saveProgress']);
     Route::post('/attempts/{attemptId}/submit', [QuizController::class, 'submitQuiz']);
     Route::get('/attempts/{attemptId}/results', [QuizController::class, 'getResults']);

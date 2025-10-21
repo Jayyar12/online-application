@@ -66,17 +66,16 @@ const MyResults = () => {
   );
 
   // Calculate stats
+  const validAttempts = attempts.filter(a => a.quiz?.total_points > 0);
   const stats = {
-    totalAttempts: attempts.length,
-    averageScore: attempts.length > 0
-      ? Math.round(
-          attempts.reduce((sum, a) => sum + ((a.score / a.quiz?.total_points || 1) * 100), 0) / attempts.length
-        )
+    totalAttempts: validAttempts.length,
+    averageScore: validAttempts.length > 0
+      ? Math.round(validAttempts.reduce((sum, a) => sum + a.percentage, 0) / validAttempts.length)
       : 0,
-    highestScore: attempts.length > 0
-      ? Math.max(...attempts.map(a => (a.score / a.quiz?.total_points || 1) * 100))
+    highestScore: validAttempts.length > 0
+      ? Math.max(...validAttempts.map(a => a.percentage))
       : 0,
-    passedQuizzes: attempts.filter(a => (a.score / a.quiz?.total_points || 0) >= 0.6).length,
+    passedQuizzes: validAttempts.filter(a => a.percentage >= 60).length,
   };
 
   if (loading) {
@@ -157,6 +156,7 @@ const MyResults = () => {
 
       {/* Results List */}
       {filteredAttempts.length === 0 ? (
+
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -171,7 +171,8 @@ const MyResults = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredAttempts.map((attempt) => {
-            const percentage = Math.round((attempt.score / (attempt.quiz?.total_points || 1)) * 100);
+            if (!attempt.quiz?.total_points || attempt.quiz.total_points === 0) return null;
+            const percentage = attempt.percentage ?? Math.round((attempt.score / (attempt.quiz?.total_points || 1)) * 100);
             
             return (
               <div 

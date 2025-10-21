@@ -59,6 +59,17 @@ export const quizService = {
   // Quiz Participation
   joinQuizByCode: (code) => api.post('/quizzes/join', { code }),
   startQuiz: (quizId) => api.post(`/quizzes/${quizId}/start`),
+  
+  // UPDATED: Save progress with time remaining
+  saveProgress: (attemptId, answers, timeRemaining = null) => 
+    api.post(`/attempts/${attemptId}/save-progress`, { 
+      answers,
+      time_remaining: timeRemaining 
+    }),
+  
+  // NEW: Get saved progress for an attempt
+  getAttemptProgress: (attemptId) => api.get(`/attempts/${attemptId}/progress`),
+  
   submitQuiz: (attemptId, answers) => api.post(`/attempts/${attemptId}/submit`, { answers }),
   getResults: (attemptId) => api.get(`/attempts/${attemptId}/results`),
   getMyAttempts: (params = {}) => api.get('/my-attempts', { params }),

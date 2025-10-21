@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Eye, EyeOff, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -45,6 +45,15 @@ const RegisterPage = () => {
     }
   };
 
+  useEffect(() => {
+    const savedStep = localStorage.getItem('otpStep');
+    const savedEmail = localStorage.getItem('emailForOtp');
+    if (savedStep && savedEmail) {
+      setOtpStep(true);
+      setEmailForOtp(savedEmail);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -75,8 +84,6 @@ const RegisterPage = () => {
     }
   };
 
-  
-
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setOtpLoading(true);
@@ -84,19 +91,25 @@ const RegisterPage = () => {
     setSuccessMessage('');
 
     try {
-      await axios.post('http://localhost:8000/api/verify-otp', {
+      const res = await axios.post('http://localhost:8000/api/verify-otp', {
         email: emailForOtp,
         otp: otp.trim(),
       });
-      
+
+      const token = res.data.token;
+      const user = res.data.user;
+
+      // store token for future auth
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
       setSuccessMessage('Email verified successfully! Redirecting to dashboard...');
-      
+
       setTimeout(() => {
         localStorage.removeItem('otpStep');
         localStorage.removeItem('emailForOtp');
         navigate('/dashboard');
-      }, 2000);
-      
+      }, 1500);
     } catch (error) {
       if (error.response?.data?.message) {
         setErrors({ general: error.response.data.message });
@@ -107,6 +120,7 @@ const RegisterPage = () => {
       setOtpLoading(false);
     }
   };
+
 
   const handleResendOtp = async () => {
     setResendLoading(true);
@@ -394,6 +408,20 @@ const RegisterPage = () => {
                 'Verify OTP'
               )}
             </motion.button>
+
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('otpStep');
+                localStorage.removeItem('emailForOtp');
+                setOtpStep(false);
+                setEmailForOtp('');
+                setOtp('');
+              }}
+              className="text-sm text-gray-600 underline mt-3"
+            >
+              Cancel and Register Again
+            </button>
 
             <div className="text-center">
               <p className="text-sm text-gray-600">

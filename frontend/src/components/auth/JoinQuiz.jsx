@@ -48,7 +48,7 @@ const JoinQuiz = () => {
   };
 
   const handleStartQuiz = () => {
-    navigate(`/take-quiz/${quizInfo.id}`);
+    navigate(`/take-quiz/${quizInfo.id}`, { replace: true });
   };
 
   const handleBack = () => {
@@ -183,15 +183,6 @@ const JoinQuiz = () => {
               {loading ? 'Checking...' : 'Join Quiz'}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => window.history.back()}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Back to Home
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -75,14 +75,10 @@ class AuthController extends Controller
             'otp' => 'required|string|size:6',
         ]);
 
-        $cacheKey = 'otp_user_' . $request->email;
-
-        $user = Cache::remember($cacheKey, 300, function () use ($request) {
-            return User::where('email', $request->email)
-                        ->where('otp', $request->otp)
-                        ->where('is_verified', false)
-                        ->first();
-        });
+        $user = User::where('email', $request->email)
+            ->where('otp', $request->otp)
+            ->where('is_verified', false)
+            ->first();
 
         if (!$user) {
             return response()->json([
@@ -90,7 +86,7 @@ class AuthController extends Controller
             ], 400);
         }
 
-        if ($user->otp_expires_at && Carbon::now()->greaterThan($user->otp_expires_at)) {
+        if ($user->otp_expires_at && now()->greaterThan($user->otp_expires_at)) {
             return response()->json([
                 'message' => 'OTP has expired. Please request a new one.'
             ], 400);
@@ -103,10 +99,17 @@ class AuthController extends Controller
             'otp_expires_at' => null,
         ]);
 
-        Cache::forget($cacheKey);
+        // issue Sanctum token
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Email verified successfully. You can now log in.'
+            'message' => 'Email verified successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'token' => $token
         ], 200);
     }
 

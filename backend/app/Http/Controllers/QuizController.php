@@ -14,11 +14,6 @@ use App\Models\Answer;
 
 class QuizController extends Controller
 {
-
-
-    
-    
-
     /**
     * Get all participants for a quiz
     */
@@ -198,43 +193,117 @@ public function getQuizStatistics(Request $request, $quizId)
 }
 
     public function saveProgress(Request $request, $attemptId)
-{
-    $attempt = QuizAttempt::findOrFail($attemptId);
-    
-    // Validate user owns this attempt
-    if ($attempt->user_id !== $request->user()->id) {
-        return response()->json(['message' => 'Unauthorized'], 403);
+    {
+        $attempt = QuizAttempt::findOrFail($attemptId);
+        
+        // Validate user owns this attempt
+        if ($attempt->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        // Don't allow saving if already completed
+        if ($attempt->completed) {
+            return response()->json(['message' => 'Quiz already completed'], 422);
+        }
+        
+        $validator = Validator::make($request->all(), [
+            'answers' => 'required|array',
+            'answers.*.question_id' => 'required|exists:questions,id',
+            'answers.*.answer' => 'nullable|string',
+            'answers.*.choice_id' => 'nullable|exists:choices,id',
+            'time_remaining' => 'nullable|integer|min:0',
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            // Update or create answers - ONLY for non-empty answers
+            foreach ($request->answers as $answerData) {
+                // Skip if answer is empty (for text-based questions)
+                if (!isset($answerData['choice_id']) && 
+                    (!isset($answerData['answer']) || trim($answerData['answer']) === '')) {
+                    // Delete existing answer if it exists (user cleared the field)
+                    Answer::where('quiz_attempt_id', $attemptId)
+                        ->where('question_id', $answerData['question_id'])
+                        ->delete();
+                    continue;
+                }
+                
+                Answer::updateOrCreate(
+                    [
+                        'quiz_attempt_id' => $attemptId,
+                        'question_id' => $answerData['question_id']
+                    ],
+                    [
+                        'choice_id' => $answerData['choice_id'] ?? null,
+                        'answer_text' => $answerData['answer'] ?? null,
+                    ]
+                );
+            }
+            
+            // Update time remaining if provided
+            if ($request->has('time_remaining')) {
+                $attempt->time_remaining = $request->time_remaining;
+                $attempt->save();
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Progress saved',
+                'data' => [
+                    'saved_at' => now(),
+                    'answers_count' => count($request->answers),
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Save progress failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'message' => 'Failed to save progress',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-    
-    // Don't allow saving if already completed
-    if ($attempt->completed) {
-        return response()->json(['message' => 'Quiz already completed'], 422);
-    }
-    
-    $validator = Validator::make($request->all(), [
-        'answers' => 'required|array',
-    ]);
-    
-    if ($validator->fails()) {
-        return response()->json(['errors' => $validator->errors()], 422);
-    }
-    
-    // Update or create answers
-    foreach ($request->answers as $answer) {
-        Answer::updateOrCreate(
-            [
-                'quiz_attempt_id' => $attemptId,
-                'question_id' => $answer['question_id']
-            ],
-            [
-                'choice_id' => $answer['choice_id'] ?? null,
-                'answer_text' => $answer['answer'] ?? null,
+
+    /**
+     * Get saved progress for an attempt (NEW METHOD)
+     */
+    public function getAttemptProgress(Request $request, $attemptId)
+    {
+        $attempt = QuizAttempt::with(['answers'])
+            ->findOrFail($attemptId);
+        
+        // Validate user owns this attempt
+        if ($attempt->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        // Don't allow loading progress if already completed
+        if ($attempt->completed) {
+            return response()->json(['message' => 'Quiz already completed'], 422);
+        }
+        
+        return response()->json([
+            'data' => [
+                'attempt_id' => $attempt->id,
+                'time_remaining' => $attempt->time_remaining,
+                'answers' => $attempt->answers->map(function ($answer) {
+                    return [
+                        'question_id' => $answer->question_id,
+                        'answer_text' => $answer->answer_text,
+                        'choice_id' => $answer->choice_id,
+                    ];
+                }),
             ]
-        );
+        ]);
     }
-    
-    return response()->json(['message' => 'Progress saved']);
-}
 
     /**
  * Join quiz by code
@@ -281,199 +350,230 @@ public function joinByCode(Request $request)
  * Start a quiz attempt
  */
 public function startQuiz(Request $request, $id)
-{
-    $quiz = Quiz::with(['questions.choices'])
-        ->published()
-        ->findOrFail($id);
+    {
+        $quiz = Quiz::with(['questions.choices'])
+            ->published()
+            ->findOrFail($id);
 
-    // Check if user has already completed this quiz
-    $existingAttempt = QuizAttempt::where('quiz_id', $quiz->id)
-        ->where('user_id', $request->user()->id)
-        ->where('completed', true)
-        ->first();
+        // Check if user owns the quiz (can't take own quiz)
+        if ($quiz->user_id === $request->user()->id) {
+            return response()->json(['message' => 'You cannot take your own quiz'], 422);
+        }
 
-    if ($existingAttempt) {
+        // Check if user has already completed this quiz
+        $existingCompletedAttempt = QuizAttempt::where('quiz_id', $quiz->id)
+            ->where('user_id', $request->user()->id)
+            ->where('completed', true)
+            ->first();
+
+        if ($existingCompletedAttempt) {
+            return response()->json([
+                'message' => 'You have already completed this quiz',
+                'data' => [
+                    'can_view_results' => true,
+                    'attempt_id' => $existingCompletedAttempt->id,
+                ]
+            ], 422);
+        }
+
+        // Check for existing incomplete attempt (resume)
+        $existingAttempt = QuizAttempt::where('quiz_id', $quiz->id)
+            ->where('user_id', $request->user()->id)
+            ->where('completed', false)
+            ->first();
+
+        if ($existingAttempt) {
+            // Resume existing attempt
+            $attempt = $existingAttempt;
+        } else {
+            // Create new attempt
+            $attempt = QuizAttempt::create([
+                'quiz_id' => $quiz->id,
+                'user_id' => $request->user()->id,
+                'started_at' => now(),
+                'completed' => false,
+                'time_remaining' => $quiz->time_limit ? ($quiz->time_limit * 60) : null,
+            ]);
+        }
+
+        // Randomize questions if enabled
+        $questions = $quiz->questions;
+        if ($quiz->randomize_questions) {
+            $questions = $questions->shuffle();
+        }
+
+        // Randomize choices if enabled
+        if ($quiz->randomize_choices) {
+            $questions = $questions->map(function ($question) {
+                if ($question->type === 'multiple_choice') {
+                    $question->choices = $question->choices->shuffle()->values();
+                }
+                return $question;
+            });
+        }
+
         return response()->json([
-            'message' => 'You have already completed this quiz'
-        ], 422);
+            'message' => $existingAttempt ? 'Resuming quiz attempt' : 'Quiz started successfully',
+            'data' => [
+                'attempt_id' => $attempt->id,
+                'quiz' => [
+                    'id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'description' => $quiz->description,
+                    'time_limit' => $quiz->time_limit,
+                    'show_results_immediately' => $quiz->show_results_immediately,
+                    'allow_review' => $quiz->allow_review,
+                ],
+                'questions' => $questions->values(),
+                'started_at' => $attempt->started_at,
+                'time_remaining' => $attempt->time_remaining, // Add this for resume
+            ]
+        ]);
     }
-
-    // Create new attempt
-    $attempt = QuizAttempt::create([
-        'quiz_id' => $quiz->id,
-        'user_id' => $request->user()->id,
-        'started_at' => now(),
-        'completed' => false,
-    ]);
-
-    if ($quiz->user_id === $request->user()->id) {
-        return response()->json(['message' => 'You cannot take your own quiz'], 422);
-    }
-
-    // Randomize questions if enabled
-    $questions = $quiz->questions;
-    if ($quiz->randomize_questions) {
-        $questions = $questions->shuffle();
-    }
-
-    // Randomize choices if enabled
-    if ($quiz->randomize_choices) {
-        $questions = $questions->map(function ($question) {
-            if ($question->type === 'multiple_choice') {
-                $question->choices = $question->choices->shuffle()->values();
-            }
-            return $question;
-        });
-    }
-
-    return response()->json([
-        'message' => 'Quiz started successfully',
-        'data' => [
-            'attempt_id' => $attempt->id,
-            'quiz' => [
-                'id' => $quiz->id,
-                'title' => $quiz->title,
-                'description' => $quiz->description,
-                'time_limit' => $quiz->time_limit,
-                'show_results_immediately' => $quiz->show_results_immediately,
-                'allow_review' => $quiz->allow_review,
-            ],
-            'questions' => $questions->values(),
-            'started_at' => $attempt->started_at,
-        ]
-    ]);
-}
 
 /**
  * Submit quiz answers
  */
-public function submitQuiz(Request $request, $attemptId)
-{
-    $attempt = QuizAttempt::with(['quiz.questions.choices'])
-        ->findOrFail($attemptId);
+ public function submitQuiz(Request $request, $attemptId)
+    {
+        $attempt = QuizAttempt::with(['quiz.questions.choices'])
+            ->findOrFail($attemptId);
 
-    // Check if user owns this attempt
-    if ($attempt->user_id !== $request->user()->id) {
-        return response()->json([
-            'message' => 'Unauthorized'
-        ], 403);
-    }
-
-    // Check if already completed
-    if ($attempt->completed) {
-        return response()->json([
-            'message' => 'Quiz already submitted'
-        ], 422);
-    }
-
-    $validator = Validator::make($request->all(), [
-        'answers' => 'required|array',
-        'answers.*.question_id' => 'required|exists:questions,id',
-        'answers.*.answer' => 'nullable',
-        'answers.*.choice_id' => 'nullable|exists:choices,id',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'message' => 'Validation failed',
-            'errors' => $validator->errors()
-        ], 422);
-    }
-
-    try {
-        DB::beginTransaction();
-
-        $score = 0;
-        $totalQuestions = $attempt->quiz->questions->count();
-
-        // Process each answer
-        foreach ($request->answers as $answerData) {
-            $question = Question::with('choices')->find($answerData['question_id']);
-            
-            if (!$question || $question->quiz_id !== $attempt->quiz_id) {
-                continue;
-            }
-
-            $isCorrect = false;
-            $pointsEarned = 0;
-
-            // Check answer based on question type
-            if ($question->type === 'multiple_choice' && isset($answerData['choice_id'])) {
-                $choice = Choice::find($answerData['choice_id']);
-                if ($choice && $choice->is_correct) {
-                    $isCorrect = true;
-                    $pointsEarned = $question->points;
-                    $score += $pointsEarned;
-                }
-
-                // Save answer
-                Answer::create([
-                    'quiz_attempt_id' => $attempt->id,
-                    'question_id' => $question->id,
-                    'choice_id' => $answerData['choice_id'],
-                    'is_correct' => $isCorrect,
-                    'points_earned' => $pointsEarned,
-                ]);
-
-            } elseif ($question->type === 'identification' && isset($answerData['answer'])) {
-                $userAnswer = trim(strtolower($answerData['answer']));
-                $correctAnswer = trim(strtolower($question->correct_answer));
-
-                if ($userAnswer === $correctAnswer) {
-                    $isCorrect = true;
-                    $pointsEarned = $question->points;
-                    $score += $pointsEarned;
-                }
-
-                // Save answer
-                Answer::create([
-                    'quiz_attempt_id' => $attempt->id,
-                    'question_id' => $question->id,
-                    'answer_text' => $answerData['answer'],
-                    'is_correct' => $isCorrect,
-                    'points_earned' => $pointsEarned,
-                ]);
-
-            } elseif ($question->type === 'essay' && isset($answerData['answer'])) {
-                // Save essay answer (requires manual grading)
-                Answer::create([
-                    'quiz_attempt_id' => $attempt->id,
-                    'question_id' => $question->id,
-                    'answer_text' => $answerData['answer'],
-                    'is_correct' => null, // Will be graded manually
-                    'points_earned' => 0, // Will be updated after grading
-                ]);
-            }
+        // Check if user owns this attempt
+        if ($attempt->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
-        // Update attempt
-        $attempt->update([
-            'score' => $score,
-            'completed' => true,
-            'completed_at' => now(),
+        // Check if already completed
+        if ($attempt->completed) {
+            return response()->json([
+                'message' => 'Quiz already submitted'
+            ], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'answers' => 'required|array',
+            'answers.*.question_id' => 'required|exists:questions,id',
+            'answers.*.answer' => 'nullable|string',
+            'answers.*.choice_id' => 'nullable|exists:choices,id',
         ]);
 
-        DB::commit();
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-        return response()->json([
-            'message' => 'Quiz submitted successfully',
-            'data' => [
-                'attempt_id' => $attempt->id,
+        try {
+            DB::beginTransaction();
+
+            $score = 0;
+            $totalQuestions = $attempt->quiz->questions->count();
+
+            // Process each answer
+            foreach ($request->answers as $answerData) {
+                $question = Question::with('choices')->find($answerData['question_id']);
+                
+                if (!$question || $question->quiz_id !== $attempt->quiz_id) {
+                    continue;
+                }
+
+                $isCorrect = false;
+                $pointsEarned = 0;
+
+                // Check answer based on question type
+                if ($question->type === 'multiple_choice' && isset($answerData['choice_id'])) {
+                    $choice = Choice::find($answerData['choice_id']);
+                    if ($choice && $choice->is_correct) {
+                        $isCorrect = true;
+                        $pointsEarned = $question->points;
+                        $score += $pointsEarned;
+                    }
+
+                    // Update or create answer
+                    Answer::updateOrCreate(
+                        [
+                            'quiz_attempt_id' => $attempt->id,
+                            'question_id' => $question->id,
+                        ],
+                        [
+                            'choice_id' => $answerData['choice_id'],
+                            'is_correct' => $isCorrect,
+                            'points_earned' => $pointsEarned,
+                        ]
+                    );
+
+                } elseif ($question->type === 'identification' && isset($answerData['answer'])) {
+                    $userAnswer = trim(strtolower($answerData['answer']));
+                    $correctAnswer = trim(strtolower($question->correct_answer));
+
+                    if ($userAnswer === $correctAnswer) {
+                        $isCorrect = true;
+                        $pointsEarned = $question->points;
+                        $score += $pointsEarned;
+                    }
+
+                    // Update or create answer
+                    Answer::updateOrCreate(
+                        [
+                            'quiz_attempt_id' => $attempt->id,
+                            'question_id' => $question->id,
+                        ],
+                        [
+                            'answer_text' => $answerData['answer'],
+                            'is_correct' => $isCorrect,
+                            'points_earned' => $pointsEarned,
+                        ]
+                    );
+
+                } elseif ($question->type === 'essay' && isset($answerData['answer'])) {
+                    // Update or create essay answer (requires manual grading)
+                    Answer::updateOrCreate(
+                        [
+                            'quiz_attempt_id' => $attempt->id,
+                            'question_id' => $question->id,
+                        ],
+                        [
+                            'answer_text' => $answerData['answer'],
+                            'is_correct' => null, // Will be graded manually
+                            'points_earned' => 0, // Will be updated after grading
+                        ]
+                    );
+                }
+            }
+
+            // Update attempt
+            $attempt->update([
                 'score' => $score,
-                'total_points' => $attempt->quiz->total_points,
-                'show_results_immediately' => $attempt->quiz->show_results_immediately,
-            ]
-        ]);
+                'completed' => true,
+                'completed_at' => now(),
+            ]);
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        return response()->json([
-            'message' => 'Failed to submit quiz',
-            'error' => $e->getMessage()
-        ], 500);
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Quiz submitted successfully',
+                'data' => [
+                    'attempt_id' => $attempt->id,
+                    'score' => $score,
+                    'total_points' => $attempt->quiz->total_points,
+                    'show_results_immediately' => $attempt->quiz->show_results_immediately,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Submit quiz failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'message' => 'Failed to submit quiz',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-}
 
 /**
  * Get quiz results
@@ -567,19 +667,27 @@ public function getResults(Request $request, $attemptId)
     ]);
 }
 
-/**
- * Get user's quiz attempts
- */
-public function getMyAttempts(Request $request)
-{
-    $attempts = QuizAttempt::with(['quiz'])
-        ->where('user_id', $request->user()->id)
-        ->where('completed', true)
-        ->latest()
-        ->paginate($request->get('per_page', 15));
+    /**
+     * Get user's quiz attempts
+     */
+    public function getMyAttempts(Request $request)
+    {
+        $attempts = QuizAttempt::with(['quiz.questions'])
+            ->where('user_id', $request->user()->id)
+            ->where('completed', true)
+            ->latest()
+            ->paginate($request->get('per_page', 15));
 
-    return response()->json($attempts);
-}
+        $attempts->getCollection()->transform(function ($attempt) {
+            $totalPoints = $attempt->quiz->questions->sum('points');
+            $attempt->quiz->total_points = $totalPoints;
+            $attempt->percentage = $totalPoints > 0 ? round(($attempt->score / $totalPoints) * 100, 2) : 0;
+            return $attempt;
+        });
+
+        return response()->json($attempts);
+    }
+
 
     
     /**
