@@ -5,10 +5,11 @@ import Swal from 'sweetalert2';
 import CreateQuiz from "./CreateQuiz";
 import MyQuizzes from "./MyQuizzes";
 import JoinQuiz from "./JoinQuiz";
+import MyResults from "./MyResults";
 
 import {
   BookOpen, Users, BarChart3, Settings, Plus, Award, TrendingUp,
-  User, LogOut, Menu, X, PlayCircle
+  User, LogOut, Menu, X, PlayCircle, ClipboardList // Added ClipboardList
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -229,9 +230,10 @@ export default function Dashboard() {
           <div className="px-6 py-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Main</p>
             <NavItem icon={BarChart3} label="Dashboard" pageKey="dashboard" isActive={currentPage === 'dashboard'} />
-            <NavItem icon={BookOpen} label="Quizzes" pageKey="quizzes" isActive={currentPage === 'quizzes'} />
+            <NavItem icon={BookOpen} label="My Quizzes" pageKey="quizzes" isActive={currentPage === 'quizzes'} />
             <NavItem icon={Plus} label="Create Quiz" pageKey="create-quiz" isActive={currentPage === 'create-quiz'} />
-            <NavItem icon={Users} label="Join" pageKey="join" isActive={currentPage === 'join'} />
+            <NavItem icon={Users} label="Join Quiz" pageKey="join" isActive={currentPage === 'join'} />
+            <NavItem icon={ClipboardList} label="My Results" pageKey="my-results" isActive={currentPage === 'my-results'} />
           </div>
           <div className="px-6 py-3 border-t border-gray-200 mt-6">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Settings</p>
@@ -265,7 +267,9 @@ export default function Dashboard() {
                 <Menu className="w-6 h-6" />
               </button>
               <h1 className="text-2xl font-bold text-gray-900">
-                {currentPage === 'create-quiz' ? 'Create Quiz' : currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}
+                {currentPage === 'create-quiz' ? 'Create Quiz' : 
+                 currentPage === 'my-results' ? 'My Results' :
+                 currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}
               </h1>
             </div>
 
@@ -286,100 +290,99 @@ export default function Dashboard() {
 
         {/* Dashboard Content */}
         <main className="p-6">
-    {currentPage === 'dashboard' && (
-      <>
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome{user?.name ? `, ${user.name}` : ''}! 👋
-          </h2>
-          <p className="text-gray-600">Here's what's happening with your quizzes today.</p>
-        </div>
+          {currentPage === 'dashboard' && (
+            <>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  Welcome{user?.name ? `, ${user.name}` : ''}! 👋
+                </h2>
+                <p className="text-gray-600">Here's what's happening with your quizzes today.</p>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            icon={BookOpen}
-            title="My Quizzes"
-            value={userStats.totalQuizzes}
-            color="bg-[#E46036]"
-            onClick={() => handleNavigation('quizzes')}
-          />
-          <StatCard
-            icon={Users}
-            title="Participants"
-            value={userStats.uniqueParticipants}
-            color="bg-[#E46036]"
-          />
-          <StatCard
-            icon={PlayCircle}
-            title="Active Quizzes"
-            value={userStats.activeQuizzes}
-            color="bg-[#E46036]"
-          />
-          <StatCard
-            icon={Award}
-            title="Average Score"
-            value={userStats.averageScore}
-            color="bg-[#E46036]"
-          />
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard
+                  icon={BookOpen}
+                  title="My Quizzes"
+                  value={userStats.totalQuizzes}
+                  color="bg-[#E46036]"
+                  onClick={() => handleNavigation('quizzes')}
+                />
+                <StatCard
+                  icon={Users}
+                  title="Participants"
+                  value={userStats.uniqueParticipants}
+                  color="bg-[#E46036]"
+                />
+                <StatCard
+                  icon={PlayCircle}
+                  title="Active Quizzes"
+                  value={userStats.activeQuizzes}
+                  color="bg-[#E46036]"
+                />
+                <StatCard
+                  icon={Award}
+                  title="Average Score"
+                  value={userStats.averageScore}
+                  color="bg-[#E46036]"
+                />
+              </div>
 
-        {/* Recent Quizzes Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Quiz Activity</h3>
-            <button 
-              onClick={() => handleNavigation('quizzes')}
-              className="text-[#E46036] hover:text-[#cc4f2d] text-sm font-medium"
-            >
-              View All
-            </button>
-          </div>
-          
-          {userStats.recentQuizzes && userStats.recentQuizzes.length > 0 ? (
-            <div className="space-y-3">
-              {userStats.recentQuizzes.map((quiz) => (
-                <div key={quiz.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <BookOpen className="w-4 h-4 text-gray-400 mr-3" />
-                    <div>
-                      <p className="font-medium text-gray-900">{quiz.title}</p>
-                      <p className="text-sm text-gray-500">
-                        Updated {new Date(quiz.updated_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    quiz.is_published 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {quiz.is_published ? 'Published' : 'Draft'}
-                  </span>
+              {/* Recent Quizzes Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Recent Quiz Activity</h3>
+                  <button 
+                    onClick={() => handleNavigation('quizzes')}
+                    className="text-[#E46036] hover:text-[#cc4f2d] text-sm font-medium"
+                  >
+                    View All
+                  </button>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500">No quiz activity yet</p>
-              <button
-                onClick={() => handleNavigation('create-quiz')}
-                className="text-[#E46036] hover:text-[#cc4f2d] text-sm font-medium mt-2"
-              >
-                Create your first quiz
-              </button>
-            </div>
+                
+                {userStats.recentQuizzes && userStats.recentQuizzes.length > 0 ? (
+                  <div className="space-y-3">
+                    {userStats.recentQuizzes.map((quiz) => (
+                      <div key={quiz.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                        <div className="flex items-center">
+                          <BookOpen className="w-4 h-4 text-gray-400 mr-3" />
+                          <div>
+                            <p className="font-medium text-gray-900">{quiz.title}</p>
+                            <p className="text-sm text-gray-500">
+                              Updated {new Date(quiz.updated_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          quiz.is_published 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {quiz.is_published ? 'Published' : 'Draft'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500">No quiz activity yet</p>
+                    <button
+                      onClick={() => handleNavigation('create-quiz')}
+                      className="text-[#E46036] hover:text-[#cc4f2d] text-sm font-medium mt-2"
+                    >
+                      Create your first quiz
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </div>
-      </>
-    )}
 
-    {currentPage === 'quizzes' && <MyQuizzes />}
-    {currentPage === 'join' && <JoinQuiz />}
-    {currentPage === 'create-quiz' && <CreateQuiz onSuccess={handleQuizCreated} />}
-  </main>
-
-
+          {currentPage === 'quizzes' && <MyQuizzes />}
+          {currentPage === 'join' && <JoinQuiz />}
+          {currentPage === 'create-quiz' && <CreateQuiz onSuccess={handleQuizCreated} />}
+          {currentPage === 'my-results' && <MyResults />}
+        </main>
       </div>
     </div>
   );

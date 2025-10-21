@@ -37,10 +37,10 @@ public function getQuizParticipants(Request $request, $quizId)
         // Calculate total points from questions
         $totalPoints = $quiz->questions->sum('points');
         
-        // Get all attempts for this quiz with user information
         $attempts = QuizAttempt::where('quiz_id', $quizId)
-            ->with(['user', 'answers'])
-            ->get();
+        ->where('completed', true) // Only completed attempts
+        ->with(['user', 'answers'])
+        ->get();
         
         // If no attempts, return empty array
         if ($attempts->isEmpty()) {
@@ -305,6 +305,10 @@ public function startQuiz(Request $request, $id)
         'started_at' => now(),
         'completed' => false,
     ]);
+
+    if ($quiz->user_id === $request->user()->id) {
+        return response()->json(['message' => 'You cannot take your own quiz'], 422);
+    }
 
     // Randomize questions if enabled
     $questions = $quiz->questions;
